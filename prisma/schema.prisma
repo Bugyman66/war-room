@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Signal {
+  id        String   @id
+  title     String
+  content   String
+  source    String
+  timestamp DateTime
+  sentiment Float    @default(0)
+  type      String
+  raw       Json?
+
+  narratives Narrative[] @relation("NarrativeSignals")
+
+  @@map("signals")
+}
+
+model Narrative {
+  id                 String    @id
+  title              String
+  description        String
+  sentiment          Float     @default(0)
+  influencers        String[] // Array of influencer IDs
+  aiSummary          String? // The AI-generated summary of this narrative
+  aiSummaryUpdatedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  signals Signal[] @relation("NarrativeSignals")
+
+  @@map("narratives")
+}
+
+model Influencer {
+  id             String  @id
+  name           String
+  handle         String?
+  type           String
+  profileUrl     String?
+  avatarUrl      String?
+  influenceScore Float   @default(0)
+
+  @@map("influencers")
+}

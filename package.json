@@ -1,0 +1,36 @@
+{
+	"name": "war-room",
+	"private": true,
+	"workspaces": [
+		"apps/*",
+		"services/*",
+		"packages/*"
+	],
+	"packageManager": "pnpm@8.6.12",
+	"scripts": {
+		"dev:ingestion": "tsx --dns-result-order=ipv4first --env-file=.env apps/worker/src/ingestion/index.ts",
+		"dev:intelligence": "tsx --env-file=.env services/intelligence-service/src/index.ts",
+		"dev:ai": "tsx --dns-result-order=ipv4first --env-file=.env services/ai-service/src/index.ts",
+		"dev:alert": "tsx --env-file=.env services/alert-service/src/index.ts",
+		"dev:api": "tsx --env-file=.env apps/api/src/server.ts",
+		"dev:web": "cd apps/web && npm run dev",
+		"dev": "node start.js"
+	},
+	"devDependencies": {
+		"concurrently": "^8.2.2",
+		"turbo": "^2.9.9"
+	},
+	"dependencies": {
+		"@fastify/cors": "^11.2.0",
+		"@prisma/client": "^5.13.0",
+		"@types/node": "^25.6.0",
+		"dotenv": "^17.4.2",
+		"fastify": "^5.8.5",
+		"prisma": "^5.13.0",
+		"redis": "^5.12.1",
+		"rss-parser": "^3.13.0",
+		"socket.io": "^4.8.3",
+		"tsx": "^4.21.0",
+		"typescript": "^6.0.3"
+	}
+}
