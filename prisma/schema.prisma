@@ -49,3 +49,13 @@ model Influencer {
 
   @@map("influencers")
 }
+
+// Runtime-editable key/value config (AI prompt template, narrative rules).
+// Edited via the admin site so tuning needs no redeploy.
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("app_config")
+}

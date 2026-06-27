@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import { 
   AlertTriangle, 
@@ -81,7 +82,7 @@ export default function OSINTDashboard() {
 
   // Fetch Data & Sockets
   useEffect(() => {
-    fetch('http://localhost:4000/api/narratives')
+    fetch('http://localhost:4000/api/narratives', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => setNarratives(data))
       .catch(err => console.error("Failed to load narratives:", err));
@@ -96,7 +97,7 @@ export default function OSINTDashboard() {
     });
 
     const interval = setInterval(() => {
-      fetch('http://localhost:4000/api/narratives')
+      fetch('http://localhost:4000/api/narratives', { cache: 'no-store' })
         .then(res => res.json())
         .then(data => setNarratives(data));
     }, 15000);
@@ -161,6 +162,14 @@ export default function OSINTDashboard() {
               {currentTime ? currentTime.toISOString().replace('T', ' ').substring(0, 19) + ' UTC' : ''}
             </span>
           </div>
+          <div className="h-4 w-[1px] bg-gray-800"></div>
+          <Link 
+            href="/admin" 
+            className="flex items-center gap-2 px-3 py-1 bg-gray-900 hover:bg-gray-800 border border-gray-700 rounded text-gray-300 font-bold transition-colors uppercase text-[10px]"
+          >
+            <Shield className="w-3 h-3" />
+            Admin
+          </Link>
         </div>
       </header>
 

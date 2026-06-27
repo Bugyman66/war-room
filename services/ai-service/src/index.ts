@@ -1,4 +1,5 @@
 import { db } from '../../../packages/db/client';
+import { getPromptTemplate } from '../../../packages/db/config';
 
 console.log('🤖 AI Orchestration Layer starting...');
 
@@ -16,11 +17,15 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
  * It then bundles the 10 most recent signals for that narrative and sends them
  * to the LLM (Gemini) to generate a concise, strategic executive summary.
  */
+const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
+const THROTTLE_MS = 15 * 1000; // 15s between Gemini calls (stay under 15 RPM)
+
+function isQuotaError(msg: string): boolean {
+  return msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429');
+}
+
 async function analyzeNarratives() {
   console.log('\n[AI Orchestrator] Scanning database for narratives needing analysis...');
-
-  // Define our "staleness" threshold: 1 hour
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
   // Fetch all narratives and their most recent signals
   const allNarratives = await db.narrative.findMany({
@@ -36,17 +41,23 @@ async function analyzeNarratives() {
   // Filter narratives that need a new AI summary.
   // A narrative needs an update if:
   // 1. It has never been summarized.
-  // 2. The previous summary failed (starts with 'Error').
-  // 3. The narrative has received new signals AND the last summary is at least 15 minutes old (cooldown to save API credits).
+  // 2. The previous summary failed (starts with 'Error') AND the cooldown has passed.
+  // 3. The narrative has received new signals AND the last summary is at least 15 minutes old.
 
-  const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
   const now = Date.now();
 
   const narrativesToAnalyze = allNarratives.filter(n => {
     // Skip analysis if there are no signals to summarize
     if (!n.signals || n.signals.length === 0) return false;
 
-    if (!n.aiSummary || n.aiSummary.startsWith('Error') || !n.aiSummaryUpdatedAt) return true;
+    // Never analyzed yet -> always pick it up.
+    if (!n.aiSummary || !n.aiSummaryUpdatedAt) return true;
+
+    // Previously errored: retry, but ONLY after the cooldown window. This is
+    // what stops the tight retry loop on 429s (we used to re-pick instantly).
+    if (n.aiSummary.startsWith('Error')) {
+      return (now - n.aiSummaryUpdatedAt.getTime()) > COOLDOWN_MS;
+    }
 
     const hasNewData = n.updatedAt > n.aiSummaryUpdatedAt;
     const cooldownPassed = (now - n.aiSummaryUpdatedAt.getTime()) > COOLDOWN_MS;
@@ -70,18 +81,11 @@ async function analyzeNarratives() {
       .map(s => `- [${s.source}] ${s.title}: ${s.content.substring(0, 100)}`)
       .join('\n');
 
-    // Define the strict prompt for the LLM
-    const prompt = `You are an expert political intelligence analyst working for the Peter Obi campaign team. 
-Based on the following recent real-time signals regarding "${narrative.title}", provide a VERY SHORT strategic summary.
-Rules:
-1. Focus only on how these signals relate to: the upcoming election, the Peter Obi campaign, the OK Movement, or opposition parties.
-2. The summary must be exactly 1 to 2 sentences.
-3. Provide exactly 1 short, actionable recommendation for the campaign.
-
-Recent Signals:
-${contextStr}
-
-Short Summary and Recommendation:`;
+    // Pull the prompt template from the DB-backed config so the admin site can
+    // tune it without a redeploy; fall back to the built-in default.
+    const prompt = (await getPromptTemplate())
+      .replace('{{title}}', narrative.title)
+      .replace('{{signals}}', contextStr);
 
     // 2. Call Gemini API
     let aiSummary = "";
@@ -100,14 +104,44 @@ Short Summary and Recommendation:`;
           })
         });
 
-        if (!response.ok) throw new Error(await response.text());
+        if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
         const data = await response.json();
 
+        // Check if the response was blocked or missing candidates
+        if (!data.candidates || data.candidates.length === 0) {
+           const blockReason = data.promptFeedback?.blockReason || 'Unknown';
+           throw new Error(`Response blocked or empty. Reason: ${blockReason}`);
+        }
+
+        const candidate = data.candidates[0];
+        if (candidate.finishReason !== 'STOP') {
+           throw new Error(`Response generation stopped prematurely. Finish reason: ${candidate.finishReason}`);
+        }
+
+        if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+           throw new Error('Response is missing expected text content.');
+        }
+
         // Extract the generated text from Gemini's response payload
-        aiSummary = data.candidates[0].content.parts[0].text;
+        aiSummary = candidate.content.parts[0].text;
       } catch (err) {
-        console.error('Gemini API Error:', (err as Error).message);
-        aiSummary = "Error generating AI summary.";
+        const msg = (err as Error).message || String(err);
+        console.error('Gemini API Error:', msg);
+
+        // Persist the failure + timestamp so the cooldown filter holds off on
+        // retrying this narrative for COOLDOWN_MS instead of hammering it.
+        await db.narrative.update({
+          where: { id: narrative.id },
+          data: { aiSummary: `Error generating AI summary: ${msg.substring(0, 100)}`, aiSummaryUpdatedAt: new Date() }
+        });
+
+        // A quota/429 is global, not narrative-specific: abort the whole cycle
+        // and let analyzeWithCooldown() engage the 10-minute backoff. Without
+        // this rethrow the cooldown never triggers and we loop on the quota.
+        if (isQuotaError(msg)) throw err;
+
+        // Non-quota error: skip just this narrative and move on.
+        continue;
       }
     } else {
       // Fallback mechanism if the user hasn't configured an API key yet
@@ -128,6 +162,10 @@ Short Summary and Recommendation:`;
 
     console.log(`✅ AI Summary generated and saved to DB!`);
     console.log(`Summary snippet: "${aiSummary.substring(0, 80).replace(/\n/g, ' ')}..."`);
+
+    // Throttle between live API calls so a multi-narrative cycle can't blow
+    // through the 15 RPM quota in one burst.
+    if (GEMINI_API_KEY) await new Promise(res => setTimeout(res, THROTTLE_MS));
   }
 }
 

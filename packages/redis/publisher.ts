@@ -9,10 +9,15 @@ let isConnected = false;
 const client = createClient({ url: REDIS_URL });
 client.on('error', (err) => console.error('Redis Client Error', err));
 
+let connectPromise: Promise<any> | null = null;
 async function ensureConnected() {
-  if (!isConnected) {
-    await client.connect();
-    isConnected = true;
+  if (!client.isOpen) {
+    if (!connectPromise) {
+      connectPromise = client.connect().then(() => {
+        connectPromise = null;
+      });
+    }
+    await connectPromise;
   }
 }
 
