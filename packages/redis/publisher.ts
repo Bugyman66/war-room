@@ -13,9 +13,14 @@ let connectPromise: Promise<any> | null = null;
 async function ensureConnected() {
   if (!client.isOpen) {
     if (!connectPromise) {
-      connectPromise = client.connect().then(() => {
-        connectPromise = null;
-      });
+      connectPromise = client.connect()
+        .then(() => {
+          connectPromise = null;
+        })
+        .catch((err) => {
+          connectPromise = null;
+          throw err;
+        });
     }
     await connectPromise;
   }

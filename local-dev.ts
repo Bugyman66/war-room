@@ -6,6 +6,8 @@
 //   (unset)        -> import the workers so their internal loops auto-start and
 //                     run forever.
 
+import 'dotenv/config';
+
 async function runOnce() {
   console.log('🧩 [Monolith] One-shot pipeline run starting...');
 

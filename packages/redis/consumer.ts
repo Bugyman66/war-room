@@ -12,7 +12,9 @@ const client = createClient({ url: REDIS_URL });
 client.on('error', (err) => console.error('Redis Client Error', err));
 
 async function ensureGroup() {
-  await client.connect();
+  if (!client.isOpen) {
+    await client.connect();
+  }
   try {
     await client.xGroupCreate(STREAM_KEY, GROUP_NAME, '0', { MKSTREAM: true });
   } catch (err: any) {
@@ -47,7 +49,9 @@ export async function consumeSignalsOnce(onSignal: (signal: Signal) => Promise<v
 
 // Replays signals from a specific ID (default '0-0' for all) bypassing the consumer group
 export async function replaySignals(onSignal: (signal: Signal) => Promise<void>, startId = '0-0') {
-  await client.connect();
+  if (!client.isOpen) {
+    await client.connect();
+  }
   let currentId = startId;
   while (true) {
     const res = await client.xRead([{ key: STREAM_KEY, id: currentId }], { COUNT: 100 });

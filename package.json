@@ -6,7 +6,7 @@
 		"services/*",
 		"packages/*"
 	],
-	"packageManager": "pnpm@8.6.12",
+	"packageManager": "npm@10.2.4",
 	"scripts": {
 		"dev:ingestion": "tsx --dns-result-order=ipv4first --env-file=.env apps/worker/src/ingestion/index.ts",
 		"dev:intelligence": "tsx --env-file=.env services/intelligence-service/src/index.ts",

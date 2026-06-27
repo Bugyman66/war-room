@@ -7,6 +7,7 @@ import { ingestTwitter } from './twitter';
 import { ingestNews } from './news';
 import { ingestYouTube } from './youtube';
 import { ingestRSS } from './rss';
+import { ingestFacebook } from './facebook';
 
 const POLL_INTERVAL_MS = 60000; // 1 minute
 
@@ -15,6 +16,7 @@ export async function runIngestionCycle() {
   try {
     await Promise.allSettled([
       ingestTwitter(),
+      ingestFacebook(),
       // ingestNews(), // Disabled due to ISP block
       ingestYouTube(),
       // Nigerian News RSS Feeds
