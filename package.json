@@ -15,7 +15,7 @@
 		"dev:api": "tsx --env-file=.env apps/api/src/server.ts",
 		"dev:web": "cd apps/web && npm run dev",
 		"dev": "node start.js",
-		"build:backend": "prisma generate",
+		"backend": "node start.js --backend",		"build:backend": "prisma generate",
 		"start:api": "prisma db push --skip-generate && tsx apps/api/src/server.ts",
 		"start:workers": "tsx --dns-result-order=ipv4first local-dev.ts"
 	},

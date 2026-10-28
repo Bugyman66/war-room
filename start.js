@@ -3,8 +3,16 @@ const { spawn } = require('child_process');
 console.log('🚀 Booting up the Nigerian Political War Room v2.0 (Low-Memory Mode)...');
 
 const runBackgroundLoop = process.argv.includes('--loop');
+// --backend: workers + API only (the dashboard is served by Vercel).
+const backendOnly = process.argv.includes('--backend');
 
-if (!runBackgroundLoop) {
+if (backendOnly) {
+  console.log('🛰️ Backend-only mode: continuous workers + API (no local dashboard).');
+  startCommands([
+    { name: 'workers', cmd: 'npx', args: ['tsx', '--dns-result-order=ipv4first', 'local-dev.ts'], color: '\x1b[35m' },
+    { name: 'api', cmd: 'npm', args: ['run', 'dev:api'], color: '\x1b[36m' }
+  ]);
+} else if (!runBackgroundLoop) {
   console.log('⚠️ Running background workers in ONE-SHOT mode to save memory. (Use --loop to run continuously)');
   
   // Run the data pipeline once before starting the servers

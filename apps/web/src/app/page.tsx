@@ -60,6 +60,9 @@ interface Alert {
 }
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// Skips ngrok's free-plan browser warning page when the API is tunnelled from
+// a local PC; ignored by any other host.
+const API_HEADERS = { 'ngrok-skip-browser-warning': 'true' };
 
 const LIVE_CHANNELS = [
   { id: 'channels', name: 'Channels TV', embedUrl: 'https://www.youtube.com/embed/W8nThq62Vb4?autoplay=1&mute=1' },
@@ -85,12 +88,12 @@ export default function OSINTDashboard() {
 
   // Fetch Data & Sockets
   useEffect(() => {
-    fetch(`${API}/api/narratives`, { cache: 'no-store' })
+    fetch(`${API}/api/narratives`, { cache: 'no-store', headers: API_HEADERS })
       .then(res => res.json())
       .then(data => setNarratives(data))
       .catch(err => console.error("Failed to load narratives:", err));
 
-    const socket: Socket = io(API);
+    const socket: Socket = io(API, { extraHeaders: API_HEADERS });
 
     socket.on('connect', () => setIsConnected(true));
     socket.on('disconnect', () => setIsConnected(false));
@@ -100,7 +103,7 @@ export default function OSINTDashboard() {
     });
 
     const interval = setInterval(() => {
-      fetch(`${API}/api/narratives`, { cache: 'no-store' })
+      fetch(`${API}/api/narratives`, { cache: 'no-store', headers: API_HEADERS })
         .then(res => res.json())
         .then(data => setNarratives(data))
         .catch(err => console.error("Failed to refresh narratives:", err));

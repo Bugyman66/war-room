@@ -21,7 +21,7 @@ import { createClient } from 'redis';
   await fastify.register(cors, { 
     origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'x-admin-token', 'Authorization']
+    allowedHeaders: ['Content-Type', 'x-admin-token', 'Authorization', 'ngrok-skip-browser-warning']
   });
 
   // Initialize Socket.io on Fastify's raw HTTP server

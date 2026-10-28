@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { Save, AlertTriangle, CheckCircle2, Plus, Trash2, RotateCcw } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+// Skips ngrok's free-plan browser warning page (see dashboard page).
+const NGROK_HEADER = { 'ngrok-skip-browser-warning': 'true' };
 
 interface NarrativeRule {
   id: string;
@@ -30,7 +32,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     setToken(localStorage.getItem('warroom_admin_token') || '');
-    fetch(`${API}/api/config`)
+    fetch(`${API}/api/config`, { headers: NGROK_HEADER })
       .then(res => res.json())
       .then((data: ConfigResponse) => {
         setPrompt(data.promptTemplate);
@@ -51,7 +53,7 @@ export default function AdminPage() {
     try {
       const res = await fetch(`${API}/api/config/prompt`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token, ...NGROK_HEADER },
         body: JSON.stringify({ promptTemplate: prompt }),
       });
       const body = await res.json();
@@ -67,7 +69,7 @@ export default function AdminPage() {
     try {
       const res = await fetch(`${API}/api/config/rules`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token, ...NGROK_HEADER },
         body: JSON.stringify({ narrativeRules: rules }),
       });
       const body = await res.json();
