@@ -1,7 +1,7 @@
 import { consumeSignals, consumeSignalsOnce } from '../../../packages/redis/consumer';
 import { Signal } from '../../../packages/types';
 import { db } from '../../../packages/db/client';
-import { getNarrativeRules } from '../../../packages/db/config';
+import { getNarrativeRules, SOCIAL_TRENDING_RULE } from '../../../packages/db/config';
 
 // ==========================================
 // INTELLIGENCE SERVICE: NARRATIVE ENGINE
@@ -17,6 +17,15 @@ console.log('🔗 Connected to PostgreSQL Database.');
 // High-level narratives and their keywords now live in the DB (AppConfig) so
 // the admin site can edit them without a redeploy. DEFAULT_NARRATIVE_RULES in
 // packages/db/config.ts is the fallback when the table is empty.
+
+/**
+ * Whole-word keyword match, so 'poo' no longer matches "poor" or "pool".
+ * Lookarounds (not \b) so keywords starting with '#' like '#ndc' still work.
+ */
+function matchesKeyword(text: string, keyword: string): boolean {
+  const escaped = keyword.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![a-z0-9])${escaped}(?![a-z0-9])`).test(text);
+}
 
 /**
  * Core processing function for a single incoming signal.
@@ -44,9 +53,15 @@ async function processSignal(signal: Signal) {
 
   const narrativeRules = await getNarrativeRules();
 
+  // Social posts are already pulled by political search queries, so instead of
+  // dropping unmatched ones as noise they fall into a catch-all trending
+  // narrative that the AI still summarizes.
+  const isSocial = signal.type === 'facebook' || signal.type === 'tweet';
+  const rules = isSocial ? [...narrativeRules, SOCIAL_TRENDING_RULE] : narrativeRules;
+
   // Check if the signal text contains any keywords for our predefined narratives
-  for (const rule of narrativeRules) {
-    if (rule.keywords.some(kw => text.includes(kw))) {
+  for (const rule of rules) {
+    if (rule === SOCIAL_TRENDING_RULE || rule.keywords.some(kw => matchesKeyword(text, kw))) {
       matchedNarrativeId = rule.id;
 
       // Upsert (Create or Update) the Narrative in the Postgres Database

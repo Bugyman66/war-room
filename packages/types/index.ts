@@ -8,7 +8,7 @@ export interface Signal {
 	source: string;
 	timestamp: string; // ISO string
 	sentiment: number; // -1 to 1
-	type: 'news' | 'tweet' | 'youtube' | 'rss' | 'other';
+	type: 'news' | 'tweet' | 'youtube' | 'rss' | 'facebook' | 'other';
 	raw?: any;
 }
 

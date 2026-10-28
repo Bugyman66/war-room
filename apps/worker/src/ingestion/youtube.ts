@@ -1,4 +1,4 @@
-import { publishSignal } from '../../../../packages/redis/publisher';
+import { publishSignal, claimPollSlot } from '../../../../packages/redis/publisher';
 import { Signal } from '../../../../packages/types';
 
 export async function ingestYouTube() {
@@ -7,6 +7,11 @@ export async function ingestYouTube() {
     console.warn('YOUTUBE_API_KEY not set. Skipping YouTube ingestion.');
     return;
   }
+
+  // Each search costs 100 of the 10,000 daily quota units, so poll far less
+  // often than the 60s ingestion cycle (15 min = ~9,600 units/day).
+  const intervalMs = Number(process.env.YOUTUBE_POLL_MINUTES || 15) * 60 * 1000;
+  if (!(await claimPollSlot('youtube', intervalMs))) return;
 
   console.log('Polling YouTube API...');
   

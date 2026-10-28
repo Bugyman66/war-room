@@ -24,6 +24,25 @@ function isQuotaError(msg: string): boolean {
   return msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('429');
 }
 
+// Engagement suffix for social signals so the LLM can tell what's spreading,
+// e.g. " | 597 reactions, 169 comments, 41 shares".
+function engagementOf(s: { type: string; raw: any }): string {
+  const r = s.raw;
+  if (!r) return '';
+  if (s.type === 'facebook') return ` | ${r.reactions ?? 0} reactions, ${r.comments ?? 0} comments, ${r.shares ?? 0} shares`;
+  if (s.type === 'tweet') return ` | ${r.favorite_count ?? 0} likes, ${r.retweet_count ?? 0} retweets, ${r.reply_count ?? 0} replies`;
+  return '';
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*|__|\*/g, '')          // bold / italic markers
+    .replace(/^#{1,6}\s+/gm, '')         // headings
+    .replace(/^\s*[-•]\s+/gm, '')        // bullet markers
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
 async function analyzeNarratives() {
   console.log('\n[AI Orchestrator] Scanning database for narratives needing analysis...');
 
@@ -78,7 +97,7 @@ async function analyzeNarratives() {
     // 1. Build Context
     // Format the signals into a readable bulleted list for the prompt
     const contextStr = narrative.signals
-      .map(s => `- [${s.source}] ${s.title}: ${s.content.substring(0, 100)}`)
+      .map(s => `- [${s.source}${engagementOf(s)}] ${s.title}: ${s.content.substring(0, 200)}`)
       .join('\n');
 
     // Pull the prompt template from the DB-backed config so the admin site can
@@ -122,8 +141,10 @@ async function analyzeNarratives() {
            throw new Error('Response is missing expected text content.');
         }
 
-        // Extract the generated text from Gemini's response payload
-        aiSummary = candidate.content.parts[0].text;
+        // Extract the generated text from Gemini's response payload. Strip
+        // markdown too, since the dashboard renders plain text and an
+        // admin-edited prompt may drop the "plain text only" rule.
+        aiSummary = stripMarkdown(candidate.content.parts[0].text);
       } catch (err) {
         const msg = (err as Error).message || String(err);
         console.error('Gemini API Error:', msg);

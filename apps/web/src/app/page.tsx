@@ -38,6 +38,7 @@ interface Signal {
   sentiment: number;
   timestamp: string;
   type?: string;
+  raw?: { url?: string } | null;
 }
 
 interface Narrative {
@@ -128,6 +129,9 @@ export default function OSINTDashboard() {
   const getSignalUrl = (sig: Signal) => {
     if (sig.type === 'tweet') {
       return `https://twitter.com/i/web/status/${sig.id}`;
+    }
+    if (sig.type === 'facebook' && sig.raw?.url) {
+      return sig.raw.url;
     }
     // RSS feeds usually store the URL in the ID field
     if (sig.id.startsWith('http')) {

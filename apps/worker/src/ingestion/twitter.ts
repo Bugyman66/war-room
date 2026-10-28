@@ -1,4 +1,4 @@
-import { publishSignal } from '../../../../packages/redis/publisher';
+import { publishSignal, claimPollSlot } from '../../../../packages/redis/publisher';
 import { Signal } from '../../../../packages/types';
 
 export async function ingestTwitter() {
@@ -7,6 +7,11 @@ export async function ingestTwitter() {
     console.warn('RAPIDAPI_KEY not set. Skipping Twitter ingestion. (Subscribe to Twitter154 on RapidAPI)');
     return;
   }
+
+  // 1 request per poll; the Twitter154 free plan allows 200/month, so the
+  // default of every 4h (~180/month) fits it.
+  const intervalMs = Number(process.env.TWITTER_POLL_HOURS || 4) * 60 * 60 * 1000;
+  if (!(await claimPollSlot('twitter', intervalMs))) return;
 
   console.log('Polling Twitter via RapidAPI...');
 

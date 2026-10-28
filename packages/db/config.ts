@@ -5,12 +5,14 @@
 
 import { db } from './client';
 
-export const DEFAULT_PROMPT_TEMPLATE = `You are an expert political intelligence analyst working for the Peter Obi campaign team.
+export const DEFAULT_PROMPT_TEMPLATE = `You are an expert political intelligence analyst working for the Office of the Director-General, Peter Obi / NDC (Nigeria Democratic Congress) Presidential Campaign Council.
 Based on the following recent real-time signals regarding "{{title}}", provide a VERY SHORT strategic summary.
 Rules:
-1. Focus only on how these signals relate to: the upcoming election, the Peter Obi campaign, the OK Movement, or opposition parties.
-2. The summary must be exactly 1 to 2 sentences.
-3. Provide exactly 1 short, actionable recommendation for the campaign.
+1. Focus only on how these signals relate to: the 2027 presidential election, the Peter Obi / NDC campaign, the Obidient / OK Movement, or opposing parties and candidates.
+2. Signals from Facebook and X (Twitter) show engagement counts; weigh what is spreading most heavily.
+3. The summary must be exactly 1 to 2 sentences.
+4. Provide exactly 1 short, actionable recommendation for the campaign.
+5. Plain text only: no markdown, asterisks, headings or bullet points.
 
 Recent Signals:
 {{signals}}
@@ -25,10 +27,14 @@ export interface NarrativeRule {
 
 export const DEFAULT_NARRATIVE_RULES: NarrativeRule[] = [
   { id: 'tier1_candidate_core', keywords: ['peter obi', 'peterobi', 'obi2027', 'mr peter obi', 'poo', 'obi presidency', 'president obi'], title: 'Tier 1: Candidate Core' },
-  { id: 'tier2_movement', keywords: ['obidient', 'obi-kwankwaso', 'obikwankwaso', 'adc presidential', 'adc2027', 'african democratic congress', 'kwankwaso coalition', 'village movement', 'labour defection'], title: 'Tier 2: Movement & Coalition' },
+  { id: 'tier2_movement', keywords: ['obidient', 'nigeria democratic congress', 'ndc presidential', 'ndc candidate', 'ndc2027', 'ndc 2027', '#ndc', 'ndc party', 'obi-kwankwaso', 'obikwankwaso', 'adc presidential', 'adc2027', 'african democratic congress', 'kwankwaso coalition', 'village movement', 'labour defection'], title: 'Tier 2: Movement & Coalition' },
   { id: 'tier3_attack_narratives', keywords: ['party hopper', 'adc betrayal', 'obi atiku vp', 'obi vice president', 'obi running mate', 'obi not serious', 'igbo candidate only', 'cannot win north', 'sec chairman', 'obi certificate', 'abandoned labour'], title: 'Tier 3: Attack Narratives' },
-  { id: 'tier4_issues', keywords: ['nigeria insecurity', 'abduct', 'benue killing', 'naira dollar rate', 'fuel price', 'asuu strike', 'nigeria inflation', 'food price', 'nigeria corruption', 'inec 2027', 'presidential election 2027', 'nigeria hardship', 'tinubu failure', 'apc performance'], title: 'Tier 4: Issues Obi Owes' },
+  { id: 'tier4_issues', keywords: ['nigeria insecurity', 'abduct', 'abducted', 'abduction', 'abductors','benue killing', 'naira dollar rate', 'fuel price', 'asuu strike', 'nigeria inflation', 'food price', 'nigeria corruption', 'inec 2027', 'presidential election 2027', 'nigeria hardship', 'tinubu failure', 'apc performance'], title: 'Tier 4: Issues Obi Owes' },
 ];
+
+// Catch-all for Facebook/X posts that match none of the rules above. Not part
+// of the editable rules so admin edits can't accidentally remove it.
+export const SOCIAL_TRENDING_RULE: NarrativeRule = { id: 'social_trending', title: 'Trending on Social Media', keywords: [] };
 
 async function readKey(key: string): Promise<string | null> {
   try {

@@ -26,6 +26,15 @@ async function ensureConnected() {
   }
 }
 
+// Quota guard for paid APIs. Atomically claims the next poll slot for `source`
+// (SET NX with expiry), so a source runs at most once per interval even across
+// restarts. Returns false if the source already ran within the interval.
+export async function claimPollSlot(source: string, intervalMs: number): Promise<boolean> {
+  await ensureConnected();
+  const res = await client.set(`ingest:lastrun:${source}`, new Date().toISOString(), { NX: true, PX: intervalMs });
+  return res === 'OK';
+}
+
 export async function publishSignal(signal: Signal) {
   await ensureConnected();
   await client.xAdd(
