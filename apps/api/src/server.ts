@@ -156,8 +156,8 @@ import { createClient } from 'redis';
     }
   });
 
-  // Start server on port 4000
-  fastify.listen({ port: 4000, host: '0.0.0.0' }, (err, address) => {
+  // Start server on $PORT (set by hosts like Railway/Render), default 4000
+  fastify.listen({ port: Number(process.env.PORT) || 4000, host: '0.0.0.0' }, (err, address) => {
     if (err) {
       fastify.log.error(err);
       process.exit(1);

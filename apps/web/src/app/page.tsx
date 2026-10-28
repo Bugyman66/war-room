@@ -59,6 +59,8 @@ interface Alert {
   timestamp: string;
 }
 
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
 const LIVE_CHANNELS = [
   { id: 'channels', name: 'Channels TV', embedUrl: 'https://www.youtube.com/embed/W8nThq62Vb4?autoplay=1&mute=1' },
   { id: 'arise', name: 'Arise News', embedUrl: 'https://www.youtube.com/embed/TJ5V8KRSu9Y?autoplay=1&mute=1' },
@@ -83,12 +85,12 @@ export default function OSINTDashboard() {
 
   // Fetch Data & Sockets
   useEffect(() => {
-    fetch('http://localhost:4000/api/narratives', { cache: 'no-store' })
+    fetch(`${API}/api/narratives`, { cache: 'no-store' })
       .then(res => res.json())
       .then(data => setNarratives(data))
       .catch(err => console.error("Failed to load narratives:", err));
 
-    const socket: Socket = io('http://localhost:4000');
+    const socket: Socket = io(API);
 
     socket.on('connect', () => setIsConnected(true));
     socket.on('disconnect', () => setIsConnected(false));
@@ -98,9 +100,10 @@ export default function OSINTDashboard() {
     });
 
     const interval = setInterval(() => {
-      fetch('http://localhost:4000/api/narratives', { cache: 'no-store' })
+      fetch(`${API}/api/narratives`, { cache: 'no-store' })
         .then(res => res.json())
-        .then(data => setNarratives(data));
+        .then(data => setNarratives(data))
+        .catch(err => console.error("Failed to refresh narratives:", err));
     }, 15000);
 
     return () => {
